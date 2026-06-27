@@ -3,10 +3,10 @@ import KFKV
 import KFService
 @_exported import KFKVAPI
 
-/// KFKV service module — registers the default mmap-backed KVStore with KFServiceManager.
+/// KFKV service module — registers the default mmap-backed KVStore with ServiceFactory.
 ///
-///     KFServiceManager.register(module: KFKVModule(handler: ...))
-///     KFServiceManager.resolve(KVStore.self).string(forKey: "token")
+///     ServiceFactory.register(module: KFKVModule(handler: ...))
+///     ServiceFactory.resolve(KVStore.self).string(forKey: "token")
 public struct KFKVModule: KFModule {
     private let handler: KFKVHandlerBridge
     private let rootDir: String?
@@ -23,7 +23,7 @@ public struct KFKVModule: KFModule {
     }
 
     public func register() {
-        KFServiceManager.register(KVStore.self) {
+        ServiceFactory.register(KVStore.self) {
             _ = KFKVEngine.initialize(rootDir: rootDir, logLevel: logLevel, handler: handler)
             let engine = KFKVEngine.default()
             return KFKVDefault(engine: engine!)
