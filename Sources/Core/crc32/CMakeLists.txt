@@ -1,0 +1,43 @@
+#
+# KFKV available.
+
+# Sets the minimum version of CMake required to build the native library.
+
+cmake_minimum_required(VERSION 3.10.0)
+
+project(z)
+
+IF(APPLE)
+    add_compile_definitions(FORCE_POSIX)
+ENDIF()
+
+
+# Creates and names a library, sets it as either STATIC
+# or SHARED, and provides the relative paths to its source code.
+# You can define multiple libraries, and CMake builds them for you.
+# Gradle automatically packages shared libraries with your APK.
+
+
+add_library( # Sets the name of the library.
+             z
+
+             # Sets the library as a shared library.
+             STATIC
+
+             # Provides a relative path to your source file(s).
+             zlib
+             Checksum.h
+             crc32_armv8.cpp
+        )
+
+
+set_target_properties(z PROPERTIES
+            CXX_STANDARD 17
+            CXX_EXTENSIONS OFF
+            )
+
+# Specifies libraries CMake should link to your target library. You
+# can link multiple libraries, such as libraries you define in this
+# build script, prebuilt third-party libraries, or system libraries.
+
+
