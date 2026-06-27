@@ -25,7 +25,7 @@ public final class KFKVModule: ModuleProtocol {
 
     public func performInit() async {
         ServiceFactory.register(KVStore.self) {
-            _ = KFKVEngine.initialize(rootDir: rootDir, logLevel: logLevel, handler: handler)
+            _ = KFKVEngine.initialize(rootDir: rootDir, logLevel: logLevel, handler: self.handler)
             let engine = KFKVEngine.default()
             return KFKVDefault(engine: engine!)
         }
