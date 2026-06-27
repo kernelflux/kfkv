@@ -5,26 +5,17 @@ import KFService
 
 /// KFKV service module — registers the default mmap-backed KVStore with ServiceFactory.
 ///
-///     ServiceFactory.register(module: KFKVModule(handler: ...))
-///     ServiceFactory.resolve(KVStore.self).string(forKey: "token")
-public struct KFKVModule: KFModule {
-    private let handler: KFKVHandlerBridge
-    private let rootDir: String?
-    private let logLevel: KFKVLogLevel
-
-    public init(
+///     ServiceFactory.register(KVStore.self) { KFKVDefault(engine: ...) }
+public enum KFKVModule {
+    /// Initialize KFKV engine and register KVStore service.
+    public static func start(
         rootDir: String? = nil,
         logLevel: KFKVLogLevel = .info,
         handler: KFKVHandlerBridge? = nil
     ) {
-        self.rootDir = rootDir
-        self.logLevel = logLevel
-        self.handler = handler ?? KFKVHandlerBridge.defaultBridge
-    }
-
-    public func register() {
+        let bridge = handler ?? KFKVHandlerBridge.defaultBridge
         ServiceFactory.register(KVStore.self) {
-            _ = KFKVEngine.initialize(rootDir: rootDir, logLevel: logLevel, handler: handler)
+            _ = KFKVEngine.initialize(rootDir: rootDir, logLevel: logLevel, handler: bridge)
             let engine = KFKVEngine.default()
             return KFKVDefault(engine: engine!)
         }
