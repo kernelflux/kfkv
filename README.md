@@ -4,8 +4,6 @@ High-performance key-value storage for iOS — mmap-backed persistence, protobuf
 
 Forked from [Tencent/MMKV](https://github.com/Tencent/MMKV) v2.4.0, stripped of Android/WatchOS/Extension targets, adapted for the KernelFlux component library.
 
-[中文文档](README_CN.md)
-
 ## Features
 
 - **mmap-backed** — direct memory-mapped file I/O, no serialization overhead
@@ -35,7 +33,7 @@ Then add the target you need:
 |---------|-------------|------------|
 | `KFKV` | ObjC wrapper | `KFKVCore` |
 | `KFKVAPI` | Swift protocol-only (zero deps) | nothing |
-| `KFKVSwift` | Swift extensions + KFService integration | `KFKV`, `KFKVAPI`, `KFService` |
+| `KFKVSwift` | Swift impl + KFService integration | `KFKV`, `KFKVAPI`, `KFService` |
 
 ## Architecture
 
@@ -43,8 +41,8 @@ Then add the target you need:
 KFKV
 ├── KFKVCore/            ← C++ core (mmap, protobuf, AES/OpenSSL, CRC/zlib)
 ├── KFKV/                ← ObjC wrapper (KFKV.h, KFKV.mm)
-├── KFKVAPI/             ← Swift protocol (KVStore)
-└── KFKVSwift/           ← KFKVDefault, KFKVHandlerBridge, KFKVModule
+├── KFKVAPI/             ← Swift protocol (KVStore) + config (KFKVConfig)
+└── KFKVSwift/           ← KFKVDefault, KFKVAssembly, KFKVStartupModule
 ```
 
 ## Quick Start
@@ -55,16 +53,27 @@ KFKV
 import KFService
 import KFKVSwift
 
-// Register module at app launch
-KFServiceManager.register(module: KFKVModule(
-    rootDir: documentsPath,
-    logLevel: .info
-))
+// In App init — register via assembly
+ServiceContainer.shared.install(KFKVAssembly())
 
-// Resolve and use
-let kv = KFServiceManager.resolve(KVStore.self)
+// In App.task — run startup
+try await Engine.run(modules: [
+    KFKVStartupModule(config: KFKVConfig(mmapID: "MyApp")),
+])
+```
+
+Resolve and use anywhere:
+
+```swift
+let kv = try ServiceContainer.shared.resolve(KVStore.self)
 kv["theme"] = "dark"
 print(kv["theme"] ?? "light")
+```
+
+Or via property wrapper:
+
+```swift
+@Inject(KVStore.self) private var kv
 ```
 
 ### Standalone (no KFService)
@@ -72,17 +81,9 @@ print(kv["theme"] ?? "light")
 ```swift
 import KFKVSwift
 
-// Initialize
-let rootDir = KFKV.initialize(rootDir: nil)
-guard let kv = KFKV.default() else { return }
-
-// Basic operations
+let kv = KFKVDefault()
+kv.initialize(config: KFKVConfig(mmapID: "standalone"))
 kv["greeting"] = "hello"
-print(kv["greeting"] ?? "nil")
-
-// Custom instance with separate file
-guard let userKV = KFKV(mmapID: "user_settings") else { return }
-userKV["theme"] = "dark"
 ```
 
 ## API Reference
@@ -90,7 +91,8 @@ userKV["theme"] = "dark"
 ### KVStore Protocol
 
 ```swift
-@objc public protocol KVStore: AnyObject {
+public protocol KVStore: AnyObject {
+    func initialize(config: KFKVConfig)
     func set(_ value: String, forKey key: String) -> Bool
     func string(forKey key: String) -> String?
     func removeValue(forKey key: String)
@@ -98,47 +100,53 @@ userKV["theme"] = "dark"
     func allKeys() -> [String]
     func contains(key: String) -> Bool
     var count: Int { get }
-    func close()
+    func unInit()
 }
 ```
 
 ### Swift Convenience (protocol extension)
 
 ```swift
-// Subscript — read, write, delete
+/// Subscript — read, write, delete
 kv["key"] = "value"
 let value = kv["key"]
 kv["key"] = nil          // removes the key
 
-// Subscript with default
+/// Subscript with default
 let theme = kv["theme", default: "light"]
 
-// Query
+/// Query
 kv.isEmpty               // count == 0
 kv.allStringKeys         // allKeys() alias
 ```
 
-### Custom Log Handler
+### KFKVConfig
 
 ```swift
-let handler = KFKVHandlerBridge(
-    onLog: { level, file, line, function, message in
-        print("[KFKV \(level)] \(message)")
-    }
-)
-KFKV.initialize(rootDir: nil, logLevel: .info, handler: handler)
+public struct KFKVConfig {
+    public var mmapID: String
+    public init(mmapID: String)
+}
 ```
 
-## KFKVModule
+## KFService Integration
 
-Registers with KFService, handles lifecycle:
+| Type | Role |
+|------|------|
+| `KFKVAssembly` | Implements `ServiceAssembly` — registers `KVStore` → `KFKVDefault` |
+| `KFKVStartupModule` | Implements `StartupModule` — provides `KFKVStartupTask` |
 
 ```swift
-KFKVModule(
-    rootDir: documentsPath,
-    logLevel: .info,
-    priority: 100   // default priority — start early
-)
+// Install (sync, in App init)
+ServiceContainer.shared.install(KFKVAssembly())
+
+// Override with custom impl — last write wins
+ServiceContainer.shared.register(KVStore.self) { MyCustomKV() }
+
+// Run (async, in App.task)
+try await Engine.run(modules: [
+    KFKVStartupModule(config: KFKVConfig(mmapID: "MyApp")),
+])
 ```
 
 ## Source Layout
@@ -150,8 +158,8 @@ Sources/
 │   ├── crc32/            ← zlib CRC-32 checksum
 │   └── ...               ← mmap, protobuf, CodedOutputData, etc.
 ├── KFKV/                 ← ObjC wrapper (KFKV.h, KFKV.mm)
-├── KFKVAPI/              ← KVStore protocol
-└── KFKVSwift/            ← KFKVDefault, KFKVHandlerBridge, KFKVModule
+├── KFKVAPI/              ← KVStore protocol + KFKVConfig
+└── KFKVSwift/            ← KFKVDefault, KFKVAssembly, KFKVStartupModule
 ```
 
 ## License
