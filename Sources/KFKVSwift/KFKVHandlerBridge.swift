@@ -2,7 +2,7 @@ import Foundation
 import KFKV
 
 /// A Swift-friendly KFKV handler that bridges ObjC callbacks into closures.
-/// Pass to `KFKVModule.init(handler:)` during service registration.
+/// Pass to `KFKVDefault.init(handler:)` during service registration.
 public final class KFKVHandlerBridge: NSObject, KFKVHandler {
 
     public typealias LogCallback = (KFKVLogLevel, String, Int, String, String) -> Void

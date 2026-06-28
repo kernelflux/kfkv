@@ -22,7 +22,7 @@ let package = Package(
         ),
     ],
     dependencies: [
-        .package(url: "https://github.com/kernelflux/kfservice.git", from: "1.0.0"),
+        .package(path: "../kfservice"),
     ],
     targets: [
         // OpenSSL AES

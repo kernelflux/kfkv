@@ -132,7 +132,14 @@ static BOOL g_hasCalledInitializeKFKV = NO;
         g_isRunningInAppExtension = YES;
     }
     if (!g_isRunningInAppExtension) {
-        auto appState = [UIApplication sharedApplication].applicationState;
+        __block auto appState = UIApplicationStateActive;
+        if ([NSThread isMainThread]) {
+            appState = [UIApplication sharedApplication].applicationState;
+        } else {
+            dispatch_sync(dispatch_get_main_queue(), ^{
+                appState = [UIApplication sharedApplication].applicationState;
+            });
+        }
         auto isInBackground = (appState == UIApplicationStateBackground);
         kfkv::KFKV::setIsInBackground(isInBackground);
         KFKVInfo("appState:%ld", (long) appState);

@@ -4,7 +4,8 @@ import Foundation
 
 /// Abstract key-value store protocol.
 /// Implement this to provide custom storage backends (plist, UserDefaults, in-memory, etc.).
-@objc public protocol KVStore: AnyObject {
+public protocol KVStore: AnyObject {
+    func initialize(config: KFKVConfig)
     func set(_ value: String, forKey key: String) -> Bool
     func string(forKey key: String) -> String?
     func removeValue(forKey key: String)
@@ -12,7 +13,9 @@ import Foundation
     func allKeys() -> [String]
     func contains(key: String) -> Bool
     var count: Int { get }
-    func close()
+
+    /// Tear down the storage engine and release resources.
+    func unInit()
 }
 
 // MARK: - Convenience
